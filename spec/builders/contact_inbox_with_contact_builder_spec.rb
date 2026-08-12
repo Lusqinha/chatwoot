@@ -111,6 +111,42 @@ describe ContactInboxWithContactBuilder do
       expect(contact_inbox.contact.id).to be(contact.id)
     end
 
+    it 'reuses a Brazilian contact stored without the ninth digit when messaged with it' do
+      existing = create(:contact, account: account, phone_number: '+555391929394')
+
+      contact_inbox = described_class.new(
+        source_id: 'wa-with-9',
+        inbox: inbox,
+        contact_attributes: { name: 'Contact', phone_number: '+5553991929394' }
+      ).perform
+
+      expect(contact_inbox.contact.id).to eq(existing.id)
+    end
+
+    it 'reuses a Brazilian contact stored with the ninth digit when messaged without it' do
+      existing = create(:contact, account: account, phone_number: '+5553991929394')
+
+      contact_inbox = described_class.new(
+        source_id: 'wa-without-9',
+        inbox: inbox,
+        contact_attributes: { name: 'Contact', phone_number: '+555391929394' }
+      ).perform
+
+      expect(contact_inbox.contact.id).to eq(existing.id)
+    end
+
+    it 'creates a new contact for a mobile with a different DDD' do
+      existing = create(:contact, account: account, phone_number: '+5553991929394')
+
+      contact_inbox = described_class.new(
+        source_id: 'wa-other-ddd',
+        inbox: inbox,
+        contact_attributes: { name: 'Contact', phone_number: '+5541991929394' }
+      ).perform
+
+      expect(contact_inbox.contact.id).not_to eq(existing.id)
+    end
+
     it 'reuses contact if it exists with the same source_id in a Facebook inbox when creating for Instagram inbox' do
       instagram_source_id = '123456789'
 

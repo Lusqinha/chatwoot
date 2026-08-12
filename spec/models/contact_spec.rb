@@ -72,6 +72,92 @@ RSpec.describe Contact do
     end
   end
 
+  context 'when a Brazilian mobile duplicates across the ninth digit' do
+    let(:account) { create(:account) }
+
+    it 'creates the contact when no equivalent number exists yet' do
+      aggregate_failures do
+        expect(build(:contact, account: account, phone_number: '+5553991929394')).to be_valid
+        expect(build(:contact, account: account, phone_number: '+555391929394')).to be_valid
+      end
+    end
+
+    it 'blocks a number without the ninth digit when one with it already exists' do
+      create(:contact, account: account, phone_number: '+5553991929394')
+      duplicate = build(:contact, account: account, phone_number: '+555391929394')
+
+      aggregate_failures do
+        expect(duplicate).not_to be_valid
+        expect(duplicate.errors[:phone_number]).to include('has already been taken')
+      end
+    end
+
+    it 'still blocks an exact duplicate phone number' do
+      create(:contact, account: account, phone_number: '+5553991929394')
+
+      expect(build(:contact, account: account, phone_number: '+5553991929394')).not_to be_valid
+    end
+
+    it 'allows a blank phone number' do
+      create(:contact, account: account, phone_number: nil)
+
+      expect(build(:contact, account: account, phone_number: nil)).to be_valid
+    end
+
+    it 'blocks a number with the ninth digit when one without it already exists' do
+      create(:contact, account: account, phone_number: '+555391929394')
+      duplicate = build(:contact, account: account, phone_number: '+5553991929394')
+
+      expect(duplicate).not_to be_valid
+    end
+
+    it 'blocks a new number when both ninth-digit variants already exist (legacy duplicates)' do
+      create(:contact, account: account, phone_number: '+5553991929394')
+      build(:contact, account: account, phone_number: '+555391929394').save(validate: false)
+
+      expect(build(:contact, account: account, phone_number: '+5553991929394')).not_to be_valid
+    end
+
+    it 'allows the same mobile number in a different account' do
+      create(:contact, account: account, phone_number: '+5553991929394')
+
+      expect(build(:contact, account: create(:account), phone_number: '+555391929394')).to be_valid
+    end
+
+    it 'does not block a Brazilian landline that shares digits with a mobile' do
+      create(:contact, account: account, phone_number: '+555332221111')
+
+      expect(build(:contact, account: account, phone_number: '+5553932221111')).to be_valid
+    end
+
+    it 'does not block numbers from other countries' do
+      create(:contact, account: account, phone_number: '+12025550123')
+
+      expect(build(:contact, account: account, phone_number: '+12025550124')).to be_valid
+    end
+
+    it 'still allows saving the existing contact itself' do
+      contact = create(:contact, account: account, phone_number: '+5553991929394')
+
+      expect(contact.update(name: 'Updated')).to be true
+    end
+
+    it 'allows editing other attributes of a contact that has a legacy duplicate' do
+      create(:contact, account: account, phone_number: '+5553991929394')
+      contact = build(:contact, account: account, phone_number: '+555391929394')
+      contact.save(validate: false)
+
+      expect(contact.update(name: 'Renamed')).to be true
+    end
+
+    it 'still blocks changing a phone number to an existing contact variant' do
+      create(:contact, account: account, phone_number: '+5553991929394')
+      contact = create(:contact, account: account, phone_number: '+554133334444')
+
+      expect(contact.update(phone_number: '+555391929394')).to be false
+    end
+  end
+
   context 'when email format' do
     it 'will throw error for existing invalid email' do
       contact = create(:contact)
