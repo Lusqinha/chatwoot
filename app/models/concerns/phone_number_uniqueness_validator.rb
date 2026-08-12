@@ -4,6 +4,7 @@
 class PhoneNumberUniquenessValidator < ActiveModel::Validator
   def validate(record)
     return if record.phone_number.blank? || record.account_id.blank?
+    return unless record.phone_number_changed?
 
     variants = Contacts::PhoneNumberVariants.new(record.phone_number).all
     duplicate = Contact.where(account_id: record.account_id, phone_number: variants).where.not(id: record.id)

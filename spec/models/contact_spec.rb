@@ -141,6 +141,21 @@ RSpec.describe Contact do
 
       expect(contact.update(name: 'Updated')).to be true
     end
+
+    it 'allows editing other attributes of a contact that has a legacy duplicate' do
+      create(:contact, account: account, phone_number: '+5553991929394')
+      contact = build(:contact, account: account, phone_number: '+555391929394')
+      contact.save(validate: false)
+
+      expect(contact.update(name: 'Renamed')).to be true
+    end
+
+    it 'still blocks changing a phone number to an existing contact variant' do
+      create(:contact, account: account, phone_number: '+5553991929394')
+      contact = create(:contact, account: account, phone_number: '+554133334444')
+
+      expect(contact.update(phone_number: '+555391929394')).to be false
+    end
   end
 
   context 'when email format' do
